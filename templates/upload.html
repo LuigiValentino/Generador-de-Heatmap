@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generador de Heatmap</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.png') }}">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            height: 100%;
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+            background: rgb(255,2,166);
+        background: linear-gradient(148deg, rgba(255,2,166,1) 0%, rgba(255,204,0,1) 100%);
+        }
+
+        .container {
+            width: 95%;
+            max-width: 1200px;
+            height: 100%;
+            background: #ffffff;
+            box-shadow: -10px 0 15px rgba(0, 0, 0, 0.1), 10px 0 15px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            justify-content: center; 
+            align-items: center; 
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: rgb(26, 26, 26);
+        }
+
+        form {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        label {
+            display: inline-block;
+            padding: 12px 25px;
+            background: rgb(26, 26, 26);
+            color: white;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        label:hover {
+            background: rgb(0, 0, 0);
+        }
+
+        button {
+            padding: 12px 25px;
+            background: rgb(26, 26, 26);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        button:hover {
+            background: rgb(0, 0, 0);
+        }
+
+        .loader {
+            display: none;
+            margin: 20px auto;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid rgb(0, 0, 0);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .heatmap-section {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            align-items: center;
+            text-align: center;
+        }
+
+        .heatmap-preview {
+            width: 50%;
+            max-height: 400px;
+            overflow: hidden;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+            background: #f8f9fa;
+            padding: 10px;
+        }
+
+        #heatmap {
+            max-width: 100%;
+            height: auto;
+            display: none;
+        }
+
+        .heatmap-actions {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        #download-button {
+            display: none;
+            padding: 12px 25px;
+            background: rgb(26, 26, 26);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        #download-button:hover {
+            background: rgb(0, 0, 0);
+        }
+
+        .footer{
+            color: black;
+            margin-bottom: 10px;
+        }
+
+
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1><i class="fa fa-fire"></i> Generador de Heatmap</h1>
+        <p class="footer">Programado por <a href="https://github.com/LuigiValentino" class="footer">Luigi Adducci</a></p>
+        <form onsubmit="uploadImage(event)">
+            <label for="file"><i class="fa fa-upload"></i> Selecciona una imagen</label>
+            <input type="file" id="file" accept="image/*" required>
+            <button type="submit"><i class="fa fa-cogs"></i> Generar Heatmap</button>
+        </form>
+
+        <div class="loader" id="loader"></div>
+
+        <div class="heatmap-section">
+            <div class="heatmap-preview">
+                <img id="heatmap" alt="Heatmap generado">
+            </div>
+
+            <div class="heatmap-actions">
+                <button id="download-button"><i class="fa fa-download"></i> Descargar Imagen completa</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function uploadImage(event) {
+            event.preventDefault();
+
+            const formData = new FormData();
+            const fileInput = document.getElementById('file');
+            formData.append('file', fileInput.files[0]);
+
+            const loader = document.getElementById('loader');
+            const heatmapImg = document.getElementById('heatmap');
+            const downloadButton = document.getElementById('download-button');
+
+            loader.style.display = 'block';
+            heatmapImg.style.display = 'none';
+            downloadButton.style.display = 'none';
+
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    heatmapImg.src = `data:image/png;base64,${result.heatmap}`;
+                    heatmapImg.style.display = 'block';
+
+                    const downloadLink = `data:image/png;base64,${result.heatmap}`;
+                    downloadButton.style.display = 'inline-block';
+                    downloadButton.onclick = () => {
+                        const a = document.createElement('a');
+                        a.href = downloadLink;
+                        a.download = 'heatmap.png';
+                        a.click();
+                    };
+                } else {
+                    alert(result.error || 'Error al generar el heatmap');
+                }
+            } catch (error) {
+                alert('Error al procesar la solicitud');
+            } finally {
+                loader.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>
